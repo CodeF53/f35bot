@@ -3,6 +3,7 @@ import { Client, InteractionTypes, MessageFlags } from 'oceanic.js'
 import _ from 'lodash'
 import type Command from './@types/command'
 
+const testEnv = Boolean(process.env.TEST)
 const client = new Client({ auth: `Bot ${process.env.TOKEN}` })
 client.on('error', err => console.error(`Oceanic Client Error`, err))
 await client.connect()
@@ -13,7 +14,10 @@ const commandDir = `${import.meta.dir}/commands`
 const commands: Command[] = await readdir(commandDir)
   .then(files => files.filter(f => f.endsWith('.ts')))
   .then(files => Promise.all(files.map(f => import(`${commandDir}/${f}`))))
-  .then(files => files.map(f => ({ ...f }))) // convert to a writable state so we can add id
+  .then(files => files.map(f => ({ ...f }))) // convert to a writable state
+// add test_ prefix in test environment
+if (testEnv) commands.forEach(c => c.config.name = `test_${c.config.name}`)
+
 const registeredCommands = await client.application.bulkEditGlobalCommands(_.map(commands, 'config'))
 for (let i = 0; i < registeredCommands.length; i++)
   commands[i].id = registeredCommands[i].id
