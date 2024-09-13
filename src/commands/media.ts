@@ -1,7 +1,8 @@
-import type { CommandInteraction, CreateApplicationCommandOptions, Message } from 'oceanic.js'
+import type { CommandInteraction, CreateApplicationCommandOptions, File as DiscordFile, Message } from 'oceanic.js'
 import { ApplicationCommandTypes, ApplicationIntegrationTypes, InteractionContextTypes } from 'oceanic.js'
 import _ from 'lodash'
-import { scrapeTiktok } from './mediaScraping/tiktok'
+import { scrapeTiktok } from '../mediaScraping/tiktok'
+import { scrapeDLP } from '../mediaScraping/dlp'
 
 export const config = {
   type: ApplicationCommandTypes.MESSAGE,
@@ -25,8 +26,12 @@ export async function handleCommand(interaction: CommandInteraction): Promise<an
     if (link.includes('tiktok.com'))
       return scrapeTiktok(link)
 
-    return []
-  })).then(_.flatten)
+    // dlp has this weird behavior where it doesn't add file type to requested output for some sites
+    if (link.includes('twitch.tv'))
+      return scrapeDLP(link, '.mp4')
+
+    return scrapeDLP(link)
+  })).then(_.flatten).then(f => _.reject(f, _.isNil) as DiscordFile[])
 
   if (files.length > 0)
     return interaction.reply({ files })

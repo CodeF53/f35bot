@@ -21,5 +21,10 @@
   // automatically created lang feature assignments
   "[json]": { "editor.defaultFormatter": "vscode.json-language-features" },
   "[jsonc]": { "editor.defaultFormatter": "vscode.json-language-features" },
-  "[javascript]": { "editor.defaultFormatter": "vscode.typescript-language-features" }
+  "[javascript]": {
+    "editor.defaultFormatter": "vscode.typescript-language-features"
+  },
+  "[html]": {
+    "editor.defaultFormatter": "vscode.html-language-features"
+  }
 }
