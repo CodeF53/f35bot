@@ -1,8 +1,9 @@
-import { ApplicationCommandOptionTypes, ApplicationCommandTypes, ApplicationIntegrationTypes, InteractionContextTypes, MessageFlags } from 'oceanic.js'
-import type { CommandInteraction, CreateApplicationCommandOptions, InteractionContent, Message } from 'oceanic.js'
+import { ApplicationCommandOptionTypes, ApplicationCommandTypes, ApplicationIntegrationTypes, InteractionContextTypes } from 'oceanic.js'
+import type { CommandInteraction, CreateApplicationCommandOptions, File as DiscordFile, Message } from 'oceanic.js'
 import _ from 'lodash'
-import { scrapeMany } from '../mediaScraping'
 import cleanURL from '../util/cleanURL'
+import { scrapeUrl } from '../mediaScraping'
+import { bytesToMB } from '../mediaScraping/util'
 
 const baseConfig = {
   integrationTypes: [ApplicationIntegrationTypes.USER_INSTALL],
@@ -45,31 +46,57 @@ export async function handleCommand(interaction: CommandInteraction): Promise<an
   const urls = _.uniq(Array.from(input.matchAll(/(https?:\/\/[^\s<]+[^<.,:;"'>)|\]\s])/g), match => cleanURL(match[0])))
   if (urls.length === 0) throw new Error('Selected message contains no urls')
 
-  interaction.editOriginal({ content: `scraping media from ${urls.length} links` })
-  const { files, errors, successfulURLs } = await scrapeMany(urls)
+  const urlStates: Dict<string | null> = _.zipObject(urls, Array.from(urls, () => 'Awaiting start'))
 
-  const followUpArgs: InteractionContent = { files }
-  followUpArgs.content = `${successfulURLs.map(url => `<${url}>`).join(' ')}\n`
+  let followUpId: string
+  let attachments: string[] = []
+  const uploadQueue: { files: DiscordFile[], url: string }[] = []
+  function addFiles(files: DiscordFile[], url: string) {
+    uploadQueue.push({ files, url })
+    if (uploadQueue.length > 1) return
+    addFilesFromQueue()
+  }
+  async function addFilesFromQueue() {
+    const { files, url } = uploadQueue[0]
+    updateStatus(url, `uploading ${files.length} files (${bytesToMB(_.sumBy(files, f => f.contents.byteLength))})`)
 
-  if (files.length >= 1) {
-    const mediaSizeMb = Math.round(_.sumBy(files, file => file.contents.byteLength) * 1e-6)
-    await interaction.editOriginal({ content: `uploading media ${mediaSizeMb}mb` })
-  } else {
-    followUpArgs.content += `**No Media Found!**\n`
-    followUpArgs.flags = MessageFlags.EPHEMERAL
-  }
-  if (errors.length > 0) {
-    const multiple = errors.length > 1
-    for (const e of errors) {
-      const shortUrl = cleanURL(e.url).replace(/^https?:\/\/(?:www\.)?/, '')
-      followUpArgs.content += `${multiple ? '- ' : ''}\`${shortUrl}\`: \`${e.error.toString().trim()}\`\n`
-    }
+    const creationArguments = { files, attachments: Array.from(attachments, id => ({ id })) }
+    let message
+    if (!followUpId) message = await interaction.createFollowup(creationArguments).then(f => f.message)
+    else message = await interaction.editFollowup(followUpId, creationArguments)
+    followUpId = message.id
+    attachments = message.attachments.map(({ id }) => id)
+
+    updateStatus(url, null)
+    uploadQueue.shift()
+    if (uploadQueue.length > 0) addFilesFromQueue()
   }
 
-  if (files.length > 1) {
-    const mediaSizeMb = _.sumBy(files, file => file.contents.byteLength) * 1e-6
-    await interaction.editOriginal({ content: `uploading media ${mediaSizeMb}mb` })
+  const updateStatusMessage = _.debounce(() =>
+    interaction.editOriginal({ content: stringifyState(urlStates) }))
+  function updateStatus(url?: string, state?: string | null) {
+    if (url && state !== undefined) urlStates[url] = state
+    updateStatusMessage()
   }
-  await interaction.createFollowup(followUpArgs)
-  interaction.deleteOriginal()
+
+  await Promise.all(urls.map(async (url) => {
+    const files = await scrapeUrl(url, status => updateStatus(url, status))
+      .catch(e => updateStatus(url, e))
+    if (!files) return
+    updateStatus(url, `waiting to upload ${files.length} files (${bytesToMB(_.sumBy(files, f => f.contents.byteLength))})`)
+    addFiles(files, url)
+  }))
+
+  updateStatusMessage()
+}
+
+function stringifyState(urlStates: Dict<string | null>) {
+  let out = ''
+  for (const url in urlStates) {
+    if (!Object.prototype.hasOwnProperty.call(urlStates, url)) continue
+    const state = urlStates[url]
+    if (state === null) continue
+    out += `\n\`${url.replace(/https?:\/\/(?:www\.)?/, '')}\`: ${state}`
+  }
+  return out
 }

@@ -1,6 +1,7 @@
 import { readdir, unlink } from 'node:fs/promises'
 import type { File as DiscordFile } from 'oceanic.js'
 import { $, file, hash } from 'bun'
+import { bytesToMB } from './util'
 
 export interface DLPOptions {
   url: string
@@ -10,16 +11,21 @@ export interface DLPOptions {
 
 const tempMediaDir = import.meta.dir.replace('src/mediaScraping', 'tempMedia/')
 
-export async function scrapeDLP(opts: DLPOptions): Promise<[DiscordFile] | undefined> {
-  // deny download if estimate is >20mb
+export async function scrapeDLP(opts: DLPOptions, updateStatus: (status: string) => void = () => { }): Promise<[DiscordFile]> {
+  updateStatus('validating link')
+  // deny download if estimate is >25mb
   const mediaSize = await getMediaSize(opts)
-  if (mediaSize > 2e+7) throw new Error('Media too large to upload to discord, use <https://cobalt.tools>')
+  const mediaMB = bytesToMB(mediaSize)
+  if (mediaSize > 25e+6)
+    throw new Error(`${mediaMB} is too large to upload to discord (25mb max), try using <https://cobalt.tools>`)
 
+  updateStatus(`downloading media (${mediaMB})`)
   const mediaPath = await downloadMedia(opts)
 
   // TODO: convert file if not supported format by discord
 
   // read file into buffer then yeet it
+  updateStatus('reading downloaded media')
   const vid = await file(mediaPath).arrayBuffer().then(Buffer.from)
   unlink(mediaPath)
 
