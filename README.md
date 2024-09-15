@@ -1,5 +1,6 @@
-# f35bot
-[![code style](https://antfu.me/badge-code-style.svg)](https://github.com/antfu/eslint-config)
+# f53util 
+[![code style](https://antfu.me/badge-code-style.svg)](https://github.com/antfu/eslint-config) \
+discord bot
 
 # features:
 - Extract Media
