@@ -19,10 +19,15 @@ export async function scrapeDLP(opts: DLPOptions, updateStatus: (status: string)
   if (mediaSize > 25e+6)
     throw new Error(`${mediaMB} is too large to upload to discord (25mb max), try using <https://cobalt.tools>`)
 
+  // download
   updateStatus(`downloading media (${mediaMB})`)
-  const mediaPath = await downloadMedia(opts)
+  let mediaPath = await downloadMedia(opts)
 
-  // TODO: convert file if not supported format by discord
+  // convert file if not supported format by discord
+  if (/\.mkv$/.test(mediaPath)) {
+    updateStatus(`transcoding media for discord playback`)
+    mediaPath = await convertMedia(mediaPath)
+  }
 
   // read file into buffer then yeet it
   updateStatus('reading downloaded media')
@@ -30,6 +35,14 @@ export async function scrapeDLP(opts: DLPOptions, updateStatus: (status: string)
   unlink(mediaPath)
 
   return [{ name: mediaPath.replace(/^.*\//, ''), contents: vid }]
+}
+
+async function convertMedia(mediaPath: string): Promise<string> {
+  const out = mediaPath.replace(/\.[^.]*$/, '.webm')
+  await $`ffmpeg -i ${mediaPath} -c:v libvpx-vp9 -crf 30 -b:v 0 -b:a 128k -c:a libopus ${out}`.text()
+    .catch((e) => { throw new Error(e.stderr) })
+    .finally(() => unlink(mediaPath))
+  return out
 }
 
 // returns downloaded path

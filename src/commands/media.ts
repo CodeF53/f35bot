@@ -72,8 +72,16 @@ export async function handleCommand(interaction: CommandInteraction): Promise<an
     if (uploadQueue.length > 0) addFilesFromQueue()
   }
 
-  const updateStatusMessage = _.debounce(() =>
-    interaction.editOriginal({ content: stringifyState(urlStates) }))
+  let statusMessageDeleted = false
+  const updateStatusMessage = _.debounce(() => {
+    const content = stringifyState(urlStates)
+    if (content === '') {
+      interaction.deleteOriginal()
+      statusMessageDeleted = true
+    }
+    if (statusMessageDeleted) return
+    interaction.editOriginal({ content })
+  })
   function updateStatus(url?: string, state?: string | null) {
     if (url && state !== undefined) urlStates[url] = state
     updateStatusMessage()
