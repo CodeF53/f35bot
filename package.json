@@ -1,6 +1,7 @@
 {
   "type": "module",
   "scripts": {
+    "start": "bun src/index.ts",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix"
   },

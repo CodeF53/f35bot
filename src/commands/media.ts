@@ -1,8 +1,8 @@
-import type { CommandInteraction, CreateApplicationCommandOptions, File as DiscordFile, Message } from 'oceanic.js'
-import { ApplicationCommandTypes, ApplicationIntegrationTypes, InteractionContextTypes } from 'oceanic.js'
+import type { CommandInteraction, CreateApplicationCommandOptions, InteractionContent, Message } from 'oceanic.js'
+import { ApplicationCommandTypes, ApplicationIntegrationTypes, InteractionContextTypes, MessageFlags } from 'oceanic.js'
 import _ from 'lodash'
-import { scrapeTiktok } from '../mediaScraping/tiktok'
-import { scrapeDLP } from '../mediaScraping/dlp'
+import { scrapeMany } from '../mediaScraping'
+import cleanURL from '../util/cleanURL'
 
 export const config = {
   type: ApplicationCommandTypes.MESSAGE,
@@ -17,23 +17,31 @@ export async function handleCommand(interaction: CommandInteraction): Promise<an
     throw new Error(`Expected MESSAGE but argument's type was ${ApplicationCommandTypes[dataType]}`)
   const message = interaction.data.target as Message
 
-  const links = Array.from(message.content.matchAll(/https?:\/\/[^\]\s]*/g), match => match[0])
-  if (links.length === 0)
-    throw new Error('Selected message contains no links')
+  const urls = _.uniq(Array.from(message.content.matchAll(/(https?:\/\/[^\s<]+[^<.,:;"'>)|\]\s])/g), match => cleanURL(match[0])))
+  if (urls.length === 0) throw new Error('Selected message contains no urls')
 
-  interaction.defer()
-  const files = await Promise.all(links.map((link) => {
-    if (link.includes('tiktok.com'))
-      return scrapeTiktok(link)
+  interaction.editOriginal({ content: `scraping media from ${urls.length} links` })
+  const { files, errors, successfulURLs } = await scrapeMany(urls)
 
-    // dlp has this weird behavior where it doesn't add file type to requested output for some sites
-    if (link.includes('twitch.tv'))
-      return scrapeDLP(link, '.mp4')
+  const replyArgs: InteractionContent = { files }
+  replyArgs.content = successfulURLs.map(url => `<${url}>`).join(' ')
 
-    return scrapeDLP(link)
-  })).then(_.flatten).then(f => _.reject(f, _.isNil) as DiscordFile[])
+  if (files.length === 0) {
+    replyArgs.content += `**No Media Found!**\n`
+    replyArgs.flags = MessageFlags.EPHEMERAL
+  }
+  if (errors.length > 0) {
+    const multiple = errors.length > 1
 
-  if (files.length > 0)
-    return interaction.reply({ files })
-  interaction.reply({ content: 'no media found' })
+    replyArgs.content += `**Error${multiple ? 's' : ''} while getting media:**\n`
+    for (const e of errors) {
+      const shortUrl = cleanURL(e.url).replace(/^https?:\/\/(?:www\.)?/, '')
+      replyArgs.content += `- \`${shortUrl}\`: \`${e.error.toString().trim()}\`\n`
+    }
+  }
+
+  if (files.length > 1)
+    await interaction.editOriginal({ content: 'uploading media' })
+  await interaction.createFollowup(replyArgs)
+  interaction.deleteOriginal()
 }

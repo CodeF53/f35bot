@@ -28,6 +28,7 @@ client.on('interactionCreate', (interaction) => {
   const command = _.find(commands, { id: interaction.data.id })
   if (!command) return interaction.reply({ content: 'Failed to find command for interaction', flags: MessageFlags.EPHEMERAL })
 
+  interaction.defer(MessageFlags.EPHEMERAL)
   command.handleCommand(interaction)
-    .catch(r => interaction.reply({ content: `${r}` }))
+    .catch(r => interaction.editOriginal({ content: `${r}` }))
 })
