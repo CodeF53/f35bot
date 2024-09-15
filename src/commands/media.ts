@@ -23,25 +23,28 @@ export async function handleCommand(interaction: CommandInteraction): Promise<an
   interaction.editOriginal({ content: `scraping media from ${urls.length} links` })
   const { files, errors, successfulURLs } = await scrapeMany(urls)
 
-  const replyArgs: InteractionContent = { files }
-  replyArgs.content = successfulURLs.map(url => `<${url}>`).join(' ')
+  const followUpArgs: InteractionContent = { files }
+  followUpArgs.content = `${successfulURLs.map(url => `<${url}>`).join(' ')}\n`
 
-  if (files.length === 0) {
-    replyArgs.content += `**No Media Found!**\n`
-    replyArgs.flags = MessageFlags.EPHEMERAL
+  if (files.length >= 1) {
+    const mediaSizeMb = Math.round(_.sumBy(files, file => file.contents.byteLength) * 1e-6)
+    await interaction.editOriginal({ content: `uploading media ${mediaSizeMb}mb` })
+  } else {
+    followUpArgs.content += `**No Media Found!**\n`
+    followUpArgs.flags = MessageFlags.EPHEMERAL
   }
   if (errors.length > 0) {
     const multiple = errors.length > 1
-
-    replyArgs.content += `**Error${multiple ? 's' : ''} while getting media:**\n`
     for (const e of errors) {
       const shortUrl = cleanURL(e.url).replace(/^https?:\/\/(?:www\.)?/, '')
-      replyArgs.content += `- \`${shortUrl}\`: \`${e.error.toString().trim()}\`\n`
+      followUpArgs.content += `${multiple ? '- ' : ''}\`${shortUrl}\`: \`${e.error.toString().trim()}\`\n`
     }
   }
 
-  if (files.length > 1)
-    await interaction.editOriginal({ content: 'uploading media' })
-  await interaction.createFollowup(replyArgs)
+  if (files.length > 1) {
+    const mediaSizeMb = _.sumBy(files, file => file.contents.byteLength) * 1e-6
+    await interaction.editOriginal({ content: `uploading media ${mediaSizeMb}mb` })
+  }
+  await interaction.createFollowup(followUpArgs)
   interaction.deleteOriginal()
 }
