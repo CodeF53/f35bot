@@ -4,7 +4,7 @@
 # features:
 - Extract Media
   - [x] rclick > "Extract Media"
-  - [ ] `/extract urls: string`
+  - [x] `/extract_media links: string`
 - Transcribe
   - [ ] rclick > "Transcribe Message"
 - Voice message any audio
