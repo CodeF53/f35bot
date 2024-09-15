@@ -12,6 +12,13 @@
   - [ ] `/upload_voice file`
 
 # usage
+Install Needed Packages:
+- [bun](https://bun.sh/) and run `bun install --frozen-lockfile`
+- [ffmpeg](https://www.ffmpeg.org/download.html)
+- [yt-dlp](https://github.com/yt-dlp/yt-dlp/wiki/Installation)
+- [yt-dlp-youtube-oauth2](https://github.com/coletdjnz/yt-dlp-youtube-oauth2?tab=readme-ov-file#installation) \
+  make sure to login by doing `yt-dlp --username oauth2 --password '' https://youtu.be/...`
+
 Install dependencies:
 ```bash
 bun install
@@ -19,5 +26,5 @@ bun install
 
 Run:
 ```bash
-bun run index.ts
+bun start
 ```
