@@ -37,3 +37,6 @@ client.on('interactionCreate', (interaction) => {
   command.handleCommand(interaction)
     .catch(r => interaction.editOriginal({ content: `${r}` }))
 })
+
+// ignore most errors
+process.on('uncaughtException', console.error)
