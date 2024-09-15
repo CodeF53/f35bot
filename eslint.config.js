@@ -6,8 +6,6 @@ export default antfu({
     'no-console': 'off',
     // single line guard statements
     'antfu/if-newline': 'off',
-    // no dumb extra line on else
-    'brace-style': ["1tbs", { "allowSingleLine": true } ],
     // dumb logic, sometimes you KNOW it will not be undefined
     'ts/no-non-null-asserted-optional-chain': 'off',
     // ha yes use redundant `require('thing')` instead of just using `thing`
@@ -19,6 +17,9 @@ export default antfu({
     'node/prefer-global/url-search-params': 'off',
     'node/prefer-global/url': 'off',
 
+    // no dumb extra line on else
+    'style/brace-style': ['error', '1tbs', { allowSingleLine: true }],
+    'brace-style': 'off',
     // import cleaning
     'unused-imports/no-unused-imports': 'error',
     'import/consistent-type-specifier-style': 'error',

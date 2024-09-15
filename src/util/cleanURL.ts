@@ -46,8 +46,7 @@ export default function cleanURL(urlString: string) {
   // don't modify anything if we can't parse the URL
   try {
     url = new URL(urlString) as URL
-  }
-  catch { return urlString }
+  } catch { return urlString }
 
   // Cheap way to check if there are any search params
   // If there are none, we don't need to modify anything

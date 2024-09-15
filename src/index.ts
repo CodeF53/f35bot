@@ -1,5 +1,5 @@
 import { readdir } from 'node:fs/promises'
-import { Client, InteractionTypes, MessageFlags, type CreateApplicationCommandOptions } from 'oceanic.js'
+import { Client, InteractionTypes, MessageFlags } from 'oceanic.js'
 import _ from 'lodash'
 import type Command from './@types/command'
 
@@ -14,13 +14,12 @@ const commandDir = `${import.meta.dir}/commands`
 const commandFiles = await readdir(commandDir)
   .then(files => files.filter(f => f.endsWith('.ts')))
   .then(files => Promise.all(files.map(f => import(`${commandDir}/${f}`))))
+// split files into multiple commands
 const commands: Command[] = commandFiles.flatMap(file =>
-  file.configs.map((config: CreateApplicationCommandOptions) => ({
-    ...file, config: {
-      ...config,
-      name: testEnv ? `test_${config.name}` : config.name
-    }
-  })))
+  file.configs.map((config: any) => ({ ...file, config: {
+    ...config,
+    name: testEnv ? `test_${config.name}` : config.name,
+  } })))
 
 // register commands & get their ids
 const registeredCommands = await client.application.bulkEditGlobalCommands(_.map(commands, 'config'))
