@@ -2,7 +2,7 @@ import type { File as DiscordFile } from 'oceanic.js'
 import { scrapeTiktok } from './tiktok'
 import { scrapeDLP } from './dlp'
 
-const includesAny = (str: string, candidates: string[]) => candidates.some(c => c.includes(str))
+const includesAny = (str: string, candidates: string[]) => candidates.some(c => str.includes(c))
 
 export async function scrapeUrl(url: string, updateStatus: (status: string) => void = () => { }): Promise<DiscordFile[]> {
   // Tiktok gets it's own scraper implementation because:
