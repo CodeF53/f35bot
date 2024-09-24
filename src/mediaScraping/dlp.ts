@@ -1,6 +1,7 @@
 import { readdir, unlink } from 'node:fs/promises'
-import type { File as DiscordFile } from 'oceanic.js'
-import { $, file, hash } from 'bun'
+import { file, hash } from 'bun'
+import shell from '../util/shell'
+import type { DiscordFile, StatusHandler } from '../@types/scraper'
 import { bytesToMB } from './util'
 
 export interface DLPOptions {
@@ -11,7 +12,7 @@ export interface DLPOptions {
 
 const tempMediaDir = import.meta.dir.replace('src/mediaScraping', 'tempMedia/')
 
-export async function scrapeDLP(opts: DLPOptions, updateStatus: (status: string) => void = () => { }): Promise<[DiscordFile]> {
+export async function scrapeDLP(opts: DLPOptions, updateStatus: StatusHandler = () => { }): Promise<[DiscordFile]> {
   console.log('scrapeDLP with opts', opts)
 
   updateStatus('validating link')
@@ -41,8 +42,7 @@ export async function scrapeDLP(opts: DLPOptions, updateStatus: (status: string)
 
 async function convertMedia(mediaPath: string): Promise<string> {
   const out = mediaPath.replace(/\.[^.]*$/, '.webm')
-  await $`ffmpeg -i ${mediaPath} -c:v libvpx-vp9 -crf 30 -b:v 0 -b:a 128k -c:a libopus ${out}`.text()
-    .catch((e) => { throw new Error(e.stderr) })
+  await shell(`ffmpeg -i ${mediaPath} -c:v libvpx-vp9 -crf 30 -b:v 0 -b:a 128k -c:a libopus ${out}`)
     .finally(() => unlink(mediaPath))
   return out
 }
@@ -52,11 +52,7 @@ async function downloadMedia({ url, fileType = '', cliArgs = '' }: DLPOptions): 
   const fileHash = hash(url).toString()
   let fileName = `${tempMediaDir}${fileHash}${fileType}`
 
-  // run DLP in command line, see https://bun.sh/docs/runtime/shell
-  const command = `yt-dlp ${url} -o ${fileName} ${cliArgs}`
-  console.log('running [download]', command)
-  await $`${command}`.text()
-    .catch((e) => { throw new Error(e.stderr) })
+  await shell(`yt-dlp ${url} -o ${fileName} ${cliArgs}`)
 
   // find file's type if we don't know it
   if (!fileType) {
@@ -69,12 +65,11 @@ async function downloadMedia({ url, fileType = '', cliArgs = '' }: DLPOptions): 
 
 /** returns size of media without downloading (in bytes) */
 async function getMediaSize({ url, cliArgs = '' }: DLPOptions): Promise<number> {
-  const command = `yt-dlp '${url}' -O "%(requested_formats.0.filesize+requested_formats.1.filesize)d" ${cliArgs}`
-  console.log('running [sizeCheck]', command)
   // https://github.com/yt-dlp/yt-dlp/issues/947#issuecomment-917366922
-  const resp = await $`${command}`.text()
-    .catch((e) => { throw e.stderr }) // catch what is likely an `ERROR: Unsupported URL:`
-    .then(Number) // cast string to number
+  const mediaSizeCliArg = '-O "%(requested_formats.0.filesize+requested_formats.1.filesize)d"'
+
+  const resp = shell(`yt-dlp '${url}' ${mediaSizeCliArg} ${cliArgs}`)
+    .then(Number)
   if (Number.isNaN(resp)) return 0
   return resp
 }

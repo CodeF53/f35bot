@@ -1,6 +1,7 @@
 import { ApplicationCommandOptionTypes, ApplicationCommandTypes, ApplicationIntegrationTypes, InteractionContextTypes } from 'oceanic.js'
-import type { CommandInteraction, CreateApplicationCommandOptions, File as DiscordFile, Message } from 'oceanic.js'
+import type { CommandInteraction, CreateApplicationCommandOptions, Message } from 'oceanic.js'
 import _ from 'lodash'
+import type { DiscordFile } from '../@types/scraper'
 import cleanURL from '../util/cleanURL'
 import { scrapeUrl } from '../mediaScraping'
 import { bytesToMB } from '../mediaScraping/util'
