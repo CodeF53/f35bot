@@ -12,6 +12,8 @@ export interface DLPOptions {
 const tempMediaDir = import.meta.dir.replace('src/mediaScraping', 'tempMedia/')
 
 export async function scrapeDLP(opts: DLPOptions, updateStatus: (status: string) => void = () => { }): Promise<[DiscordFile]> {
+  console.log('scrapeDLP with opts', opts)
+
   updateStatus('validating link')
   // deny download if estimate is >25mb
   const mediaSize = await getMediaSize(opts)
