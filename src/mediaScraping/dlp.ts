@@ -51,7 +51,9 @@ async function downloadMedia({ url, fileType = '', cliArgs = '' }: DLPOptions): 
   let fileName = `${tempMediaDir}${fileHash}${fileType}`
 
   // run DLP in command line, see https://bun.sh/docs/runtime/shell
-  await $`yt-dlp ${url} -o ${fileName} ${cliArgs}`.text()
+  const command = `yt-dlp ${url} -o ${fileName} ${cliArgs}`
+  console.log('running [download]', command)
+  await $`${command}`.text()
     .catch((e) => { throw new Error(e.stderr) })
 
   // find file's type if we don't know it
@@ -65,8 +67,10 @@ async function downloadMedia({ url, fileType = '', cliArgs = '' }: DLPOptions): 
 
 /** returns size of media without downloading (in bytes) */
 async function getMediaSize({ url, cliArgs = '' }: DLPOptions): Promise<number> {
+  const command = `yt-dlp '${url}' -O "%(requested_formats.0.filesize+requested_formats.1.filesize)d" ${cliArgs}`
+  console.log('running [sizeCheck]', command)
   // https://github.com/yt-dlp/yt-dlp/issues/947#issuecomment-917366922
-  const resp = await $`yt-dlp ${url} -O "%(requested_formats.0.filesize+requested_formats.1.filesize)d" ${cliArgs}`.text()
+  const resp = await $`${command}`.text()
     .catch((e) => { throw e.stderr }) // catch what is likely an `ERROR: Unsupported URL:`
     .then(Number) // cast string to number
   if (Number.isNaN(resp)) return 0
